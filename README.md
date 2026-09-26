@@ -82,6 +82,17 @@ RandomImageViewer(
 )
 ```
 
+```dart
+Uint8List? imageBytes = File.bytes;
+
+RandomImageViewer(
+  imageBytes: imageBytes, // load image from memory (Uint8List)
+  height: 200,
+  width: 200,
+  enableRotation: true, // Enable image rotation
+)
+```
+
 ### Using Custom Placeholder and Error Widgets
 
 ```dart
@@ -189,6 +200,7 @@ RandomImageViewer(
 | Property           | Description |
 |--------------------|-------------|
 | `imagePath`        | Path to the image (asset, file, or network URL) |
+| `imageBytes`       | Uint8List holding the image data |
 | `height` & `width` | Define image dimensions |
 | `fit`              | Control image fitting (`BoxFit.contain`, `BoxFit.cover`, etc.) |
 | `enableZoom`       | Enable pinch-to-zoom (`true/false`) |

@@ -2,12 +2,14 @@ library random_image_viewer;
 
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:math' as math;
 
 class RandomImageViewer extends StatefulWidget {
   final String? imagePath;
+  final Uint8List? imageBytes;
   final double? height;
   final double? width;
   final double? maxScale;
@@ -33,11 +35,12 @@ class RandomImageViewer extends StatefulWidget {
   final Widget? placeholderWidget;
   final Widget? errorWidget;
   final Function(double)?
-      onRotationChanged; // New callback for rotation changes
+  onRotationChanged; // New callback for rotation changes
 
   const RandomImageViewer({
     super.key,
     this.imagePath,
+    this.imageBytes,
     this.height,
     this.width,
     this.color,
@@ -103,22 +106,23 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
               (widget.height ?? 200) / 2,
             );
             final double angle = _calculateRotationAngle(
-                details.localPosition, centerOffset, details.delta);
+              details.localPosition,
+              centerOffset,
+              details.delta,
+            );
 
             setState(() {
               _rotation += angle;
               // Notify callback if provided
               if (widget.onRotationChanged != null) {
-                widget.onRotationChanged!(_rotation *
-                    (180 / math.pi)); // Convert to degrees for callback
+                widget.onRotationChanged!(
+                  _rotation * (180 / math.pi),
+                ); // Convert to degrees for callback
               }
             });
           }
         },
-        child: Transform.rotate(
-          angle: _rotation,
-          child: imageWidget,
-        ),
+        child: Transform.rotate(angle: _rotation, child: imageWidget),
       );
     }
 
@@ -168,7 +172,8 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
     if (vector.distance > 0) {
       // Clockwise or counterclockwise rotation based on screen position
       final double angleSign = vector.dy > 0 ? 1 : -1;
-      angle = (delta.dx / 150) *
+      angle =
+          (delta.dx / 150) *
           angleSign *
           math.pi /
           32; // Adjust sensitivity here
@@ -214,6 +219,21 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
   }
 
   Widget _buildImageBasedOnType() {
+    // If imageBytes is provided, use it regardless of path
+    if (widget.imageBytes != null) {
+      return Image.memory(
+        widget.imageBytes!,
+        height: widget.height,
+        width: widget.width,
+        fit: widget.fit ?? BoxFit.contain,
+        color: widget.color,
+        colorBlendMode: widget.color != null ? BlendMode.modulate : null,
+        errorBuilder: (context, error, stackTrace) =>
+            _buildErrorWidget(context),
+      );
+    }
+
+    // Fallback to path-based handling
     switch (widget.imagePath?.imageType) {
       case ImageType.svg:
         return SvgPicture.asset(
@@ -247,7 +267,8 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
         );
       case ImageType.gif:
         return widget.imagePath!.startsWith('http')
-            ? Image.network(widget.imagePath!,
+            ? Image.network(
+                widget.imagePath!,
                 height: widget.height,
                 width: widget.width,
                 fit: widget.fit ?? BoxFit.contain,
@@ -256,11 +277,14 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
                   return _buildPlaceholderWidget();
                 },
                 errorBuilder: (context, error, stackTrace) =>
-                    _buildErrorWidget(context))
-            : Image.asset(widget.imagePath!,
+                    _buildErrorWidget(context),
+              )
+            : Image.asset(
+                widget.imagePath!,
                 height: widget.height,
                 width: widget.width,
-                fit: widget.fit ?? BoxFit.contain);
+                fit: widget.fit ?? BoxFit.contain,
+              );
       case ImageType.webp:
       case ImageType.bmp:
       case ImageType.tiff:
@@ -308,20 +332,21 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
   }
 
   Widget _buildImageWithBorder(BuildContext context, Widget imageWidget) {
-    if (widget.imagePath == null || widget.imagePath!.isEmpty) {
-      return _buildErrorWidget(context);
-    } else {
-      return widget.border != null
-          ? Container(
-              decoration: BoxDecoration(
-                border: widget.border,
-                borderRadius: widget.radius,
-                color: widget.backgroundColor,
-              ),
-              child: imageWidget,
-            )
-          : imageWidget;
+    if ((widget.imagePath == null || widget.imagePath!.isEmpty) &&
+        widget.imageBytes == null) {
+      return _buildErrorWidget(context); // Only show error if BOTH are null
     }
+
+    return widget.border != null
+        ? Container(
+            decoration: BoxDecoration(
+              border: widget.border,
+              borderRadius: widget.radius,
+              color: widget.backgroundColor,
+            ),
+            child: imageWidget,
+          )
+        : imageWidget;
   }
 
   Widget _buildErrorWidget(BuildContext context) {
@@ -330,8 +355,11 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
           alignment: Alignment.center,
           color: widget.backgroundColor,
           child: Center(
-            child: Icon(widget.errorIcon ?? Icons.error,
-                color: widget.errorColor ?? Colors.red, size: 48),
+            child: Icon(
+              widget.errorIcon ?? Icons.error,
+              color: widget.errorColor ?? Colors.red,
+              size: 48,
+            ),
           ),
         );
   }
@@ -342,7 +370,7 @@ class RotationControls extends StatelessWidget {
   final _RandomImageViewerState viewerState;
 
   const RotationControls({Key? key, required this.viewerState})
-      : super(key: key);
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -407,6 +435,7 @@ extension ImageTypeExtension on String? {
 }
 
 enum ImageType {
+  bytes,
   svg,
   png,
   jpg,
@@ -419,5 +448,5 @@ enum ImageType {
   heic,
   network,
   file,
-  unknown
+  unknown,
 }
