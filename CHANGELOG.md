@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Added optional `imageBytes` (`Uint8List`) so an image can be shown from memory.
+
 ## 0.1.0
 
 Feature Update
