@@ -1,6 +1,6 @@
 name: random_image_viewer
 description: "Highly customizable Flutter widget that supports displaying various image formats"
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/JabbarKakar/random_image_viewer.git
 
 environment:
@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.16
-  cached_network_image: ^3.4.1
+  cached_network_image: ^4.0.2
 
 dev_dependencies:
   flutter_test:

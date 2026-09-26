@@ -1,3 +1,4 @@
+/// A customizable Flutter widget for images from assets, files, network URLs, and memory.
 library random_image_viewer;
 
 import 'package:flutter/material.dart';
@@ -7,36 +8,90 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:math' as math;
 
+/// Displays an image with optional zoom, rotation, borders, and loading or error widgets.
 class RandomImageViewer extends StatefulWidget {
+  /// Asset path, file path, or network URL of the image.
   final String? imagePath;
-  final Uint8List? imageBytes;
-  final double? height;
-  final double? width;
-  final double? maxScale;
-  final double? mimScale;
-  final Color? color;
-  final Color? errorColor;
-  final Color? backgroundColor;
-  final Color? progressIndicatorColor;
-  final BoxFit? fit;
-  final Alignment? alignment;
-  final VoidCallback? onTap;
-  final EdgeInsetsGeometry? margin;
-  final BorderRadius? radius;
-  final BoxBorder? border;
-  final bool enableZoom;
-  final bool doubleTapZoom;
-  final bool enableRotation; // New property to enable/disable rotation
-  final double initialRotation; // New property for initial rotation angle
-  final double strokeWidth;
-  final double? loaderHeight;
-  final double? loaderWidth;
-  final IconData? errorIcon;
-  final Widget? placeholderWidget;
-  final Widget? errorWidget;
-  final Function(double)?
-  onRotationChanged; // New callback for rotation changes
 
+  /// Raw image bytes. Used instead of [imagePath] when set.
+  final Uint8List? imageBytes;
+
+  /// Height of the image.
+  final double? height;
+
+  /// Width of the image.
+  final double? width;
+
+  /// Largest zoom factor when [enableZoom] is true.
+  final double? maxScale;
+
+  /// Smallest zoom factor when [enableZoom] is true.
+  final double? mimScale;
+
+  /// Color blended over the image.
+  final Color? color;
+
+  /// Color of the default error icon.
+  final Color? errorColor;
+
+  /// Background color behind the image.
+  final Color? backgroundColor;
+
+  /// Color of the default loading indicator.
+  final Color? progressIndicatorColor;
+
+  /// How the image is inscribed into the given size.
+  final BoxFit? fit;
+
+  /// Alignment of the image inside its parent.
+  final Alignment? alignment;
+
+  /// Called when the image is tapped.
+  final VoidCallback? onTap;
+
+  /// Empty space around the image.
+  final EdgeInsetsGeometry? margin;
+
+  /// Corner radius applied to the image.
+  final BorderRadius? radius;
+
+  /// Border drawn around the image.
+  final BoxBorder? border;
+
+  /// Whether pinch-to-zoom is enabled.
+  final bool enableZoom;
+
+  /// Whether a double tap toggles zoom.
+  final bool doubleTapZoom;
+
+  /// Whether a drag gesture rotates the image.
+  final bool enableRotation;
+
+  /// Starting rotation in degrees.
+  final double initialRotation;
+
+  /// Stroke width of the default loading indicator.
+  final double strokeWidth;
+
+  /// Height of the default loading indicator.
+  final double? loaderHeight;
+
+  /// Width of the default loading indicator.
+  final double? loaderWidth;
+
+  /// Icon shown when the image fails to load and [errorWidget] is null.
+  final IconData? errorIcon;
+
+  /// Widget shown while a network or GIF image is loading.
+  final Widget? placeholderWidget;
+
+  /// Widget shown when the image cannot be loaded.
+  final Widget? errorWidget;
+
+  /// Called with the current rotation in degrees while the user rotates the image.
+  final Function(double)? onRotationChanged;
+
+  /// Creates an image viewer.
   const RandomImageViewer({
     super.key,
     this.imagePath,
@@ -68,6 +123,7 @@ class RandomImageViewer extends StatefulWidget {
     this.progressIndicatorColor,
   });
 
+  /// Creates the mutable state for this widget.
   @override
   State<RandomImageViewer> createState() => _RandomImageViewerState();
 }
@@ -172,8 +228,7 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
     if (vector.distance > 0) {
       // Clockwise or counterclockwise rotation based on screen position
       final double angleSign = vector.dy > 0 ? 1 : -1;
-      angle =
-          (delta.dx / 150) *
+      angle = (delta.dx / 150) *
           angleSign *
           math.pi /
           32; // Adjust sensitivity here
@@ -182,39 +237,14 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
     return angle;
   }
 
-  // Method to programmatically rotate the image
-  void rotateImage(double degrees) {
-    setState(() {
-      _rotation = degrees * (math.pi / 180); // Convert to radians
-      if (widget.onRotationChanged != null) {
-        widget.onRotationChanged!(degrees);
-      }
-    });
-  }
-
-  // Method to rotate by 90 degrees clockwise
-  void rotateClockwise() {
-    rotateImage((_rotation * (180 / math.pi) + 90) % 360);
-  }
-
-  // Method to rotate by 90 degrees counterclockwise
-  void rotateCounterclockwise() {
-    rotateImage((_rotation * (180 / math.pi) - 90) % 360);
-  }
-
-  // Reset rotation to initial state
-  void resetRotation() {
-    rotateImage(widget.initialRotation);
-  }
-
   void _handleDoubleTap() {
     if (_transformationController.value != Matrix4.identity()) {
       _transformationController.value = Matrix4.identity();
     } else {
       final position = _doubleTapDetails!.localPosition;
       _transformationController.value = Matrix4.identity()
-        ..translate(-position.dx * 1.5, -position.dy * 1.5)
-        ..scale(2.0);
+        ..translateByDouble(-position.dx * 1.5, -position.dy * 1.5, 0, 1)
+        ..scaleByDouble(2, 2, 2, 1);
     }
   }
 
@@ -240,7 +270,9 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
           widget.imagePath!,
           height: widget.height,
           width: widget.width,
-          color: widget.color,
+          colorFilter: widget.color == null
+              ? null
+              : ColorFilter.mode(widget.color!, BlendMode.srcIn),
           fit: widget.fit ?? BoxFit.contain,
         );
       case ImageType.file:
@@ -365,88 +397,99 @@ class _RandomImageViewerState extends State<RandomImageViewer> {
   }
 }
 
-// Example of a rotation control widget that can be used alongside RandomImageViewer
-class RotationControls extends StatelessWidget {
-  final _RandomImageViewerState viewerState;
-
-  const RotationControls({Key? key, required this.viewerState})
-    : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.rotate_left),
-          onPressed: viewerState.rotateCounterclockwise,
-          tooltip: 'Rotate Left',
-        ),
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: viewerState.resetRotation,
-          tooltip: 'Reset Rotation',
-        ),
-        IconButton(
-          icon: const Icon(Icons.rotate_right),
-          onPressed: viewerState.rotateClockwise,
-          tooltip: 'Rotate Right',
-        ),
-      ],
-    );
-  }
-}
-
+/// Classifies an image path or URL by its source and file extension.
 extension ImageTypeExtension on String? {
+  /// The detected [ImageType] for this path.
   ImageType get imageType {
-    if (this == null || this!.isEmpty) return ImageType.unknown;
-    if (this!.startsWith('http') || this!.startsWith('https')) {
-      if (this!.endsWith('.svg')) return ImageType.svg;
-      if (this!.endsWith('.jpg') || this!.endsWith('.jpeg'))
-        return ImageType.jpeg;
-      if (this!.endsWith('.png')) return ImageType.png;
-      if (this!.endsWith('.gif')) return ImageType.gif;
-      if (this!.endsWith('.webp')) return ImageType.webp;
-      if (this!.endsWith('.bmp')) return ImageType.bmp;
-      if (this!.endsWith('.tiff') || this!.endsWith('.tif'))
-        return ImageType.tiff;
-      if (this!.endsWith('.ico')) return ImageType.ico;
-      if (this!.endsWith('.heic') || this!.endsWith('.heif'))
-        return ImageType.heic;
-      return ImageType.network;
-    } else if (this!.startsWith('/data/user/0/')) {
+    if (this == null || this!.isEmpty) {
+      return ImageType.unknown;
+    }
+    final value = this!;
+    if (value.startsWith('http') || value.startsWith('https')) {
+      return _imageTypeFromExtension(value, fallback: ImageType.network);
+    } else if (value.startsWith('/data/user/0/')) {
       return ImageType.file;
     } else {
-      if (this!.endsWith('.svg')) return ImageType.svg;
-      if (this!.endsWith('.jpg') || this!.endsWith('.jpeg'))
-        return ImageType.jpeg;
-      if (this!.endsWith('.png')) return ImageType.png;
-      if (this!.endsWith('.gif')) return ImageType.gif;
-      if (this!.endsWith('.webp')) return ImageType.webp;
-      if (this!.endsWith('.bmp')) return ImageType.bmp;
-      if (this!.endsWith('.tiff') || this!.endsWith('.tif'))
-        return ImageType.tiff;
-      if (this!.endsWith('.ico')) return ImageType.ico;
-      if (this!.endsWith('.heic') || this!.endsWith('.heif'))
-        return ImageType.heic;
-      return ImageType.unknown;
+      return _imageTypeFromExtension(value, fallback: ImageType.unknown);
     }
   }
 }
 
+ImageType _imageTypeFromExtension(
+  String value, {
+  required ImageType fallback,
+}) {
+  if (value.endsWith('.svg')) {
+    return ImageType.svg;
+  }
+  if (value.endsWith('.jpg') || value.endsWith('.jpeg')) {
+    return ImageType.jpeg;
+  }
+  if (value.endsWith('.png')) {
+    return ImageType.png;
+  }
+  if (value.endsWith('.gif')) {
+    return ImageType.gif;
+  }
+  if (value.endsWith('.webp')) {
+    return ImageType.webp;
+  }
+  if (value.endsWith('.bmp')) {
+    return ImageType.bmp;
+  }
+  if (value.endsWith('.tiff') || value.endsWith('.tif')) {
+    return ImageType.tiff;
+  }
+  if (value.endsWith('.ico')) {
+    return ImageType.ico;
+  }
+  if (value.endsWith('.heic') || value.endsWith('.heif')) {
+    return ImageType.heic;
+  }
+  return fallback;
+}
+
+/// How an image path is loaded.
 enum ImageType {
+  /// Image bytes already held in memory.
   bytes,
+
+  /// An SVG asset or URL.
   svg,
+
+  /// A PNG asset.
   png,
+
+  /// A JPG asset.
   jpg,
+
+  /// A JPEG asset or URL.
   jpeg,
+
+  /// A GIF asset or URL.
   gif,
+
+  /// A WebP asset or URL.
   webp,
+
+  /// A BMP asset or URL.
   bmp,
+
+  /// A TIFF asset or URL.
   tiff,
+
+  /// An ICO asset or URL.
   ico,
+
+  /// An HEIC or HEIF asset or URL.
   heic,
+
+  /// A network URL whose format is not detected from the extension.
   network,
+
+  /// A file on the local device.
   file,
+
+  /// A path that could not be classified.
   unknown,
 }

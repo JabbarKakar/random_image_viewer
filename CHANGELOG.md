@@ -1,3 +1,9 @@
+## 0.2.1
+
+- Documented the public API.
+- Replaced deprecated `Matrix4` and `SvgPicture` calls flagged by the analyzer.
+- Updated `cached_network_image` to 4.x.
+
 ## 0.2.0
 
 - Added optional `imageBytes` (`Uint8List`) so an image can be shown from memory.
